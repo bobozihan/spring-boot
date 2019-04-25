@@ -1,6 +1,6 @@
 package com.mxp.controller;
 
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Component;
 
 import javax.websocket.OnClose;
@@ -9,93 +9,67 @@ import javax.websocket.OnOpen;
 import javax.websocket.Session;
 import javax.websocket.server.PathParam;
 import javax.websocket.server.ServerEndpoint;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 /**
- * @Auther: liaoshiyao
- * @Date: 2019/1/11 11:48
- * @Description: websocket 服务类
+ * EMAIL menxipeng@gmail.com
+ * AUTHOR:menxipeng
+ * DATE: 2019/4/8
+ * TIME: 10:13
  */
 
-/**
- *
- * @ServerEndpoint 这个注解有什么作用？
- *
- * 这个注解用于标识作用在类上，它的主要功能是把当前类标识成一个WebSocket的服务端
- * 注解的值用户客户端连接访问的URL地址
- *
- */
-
-@Slf4j
+@Log4j2
 @Component
-@ServerEndpoint("/websocket/{name}")
+@ServerEndpoint("/websocket/{merchantId}")
+//此注解相当于设置访问URL
 public class WebSocket {
-
-    /**
-     * 与某个客户端的连接对话，需要通过它来给客户端发送消息
-     */
     private Session session;
 
-    /**
-     * 用于存所有的连接服务的客户端，这个对象存储是安全的
-     */
-    private static ConcurrentHashMap<String, WebSocket> webSocketSet = new ConcurrentHashMap<>();
-
+    private static CopyOnWriteArraySet<WebSocket> webSockets =new CopyOnWriteArraySet<>();
+    private static Map<String,Session> sessionPool = new HashMap<>();
 
     @OnOpen
-    public void OnOpen(Session session, @PathParam(value = "name") String name) {
+    public void onOpen(Session session, @PathParam(value="merchantId") String merchantId) {
         this.session = session;
-        // name是用来表示唯一客户端，如果需要指定发送，需要指定发送通过name来区分
-        webSocketSet.put(name, this);
-        log.info("[WebSocket] 连接成功，当前连接人数为：={}", webSocketSet.size());
+        webSockets.add(this);
+        sessionPool.put(merchantId, session);
+        log.info("【websocket消息】有新的连接，总数为: {}",webSockets.size());
     }
 
-
     @OnClose
-    public void OnClose() {
-        webSocketSet.remove(this);
-        log.info("[WebSocket] 退出成功，当前连接人数为：={}", webSocketSet.size());
+    public void onClose() {
+        webSockets.remove(this);
+        log.info("【websocket消息】连接断开，总数为: {} ",webSockets.size());
     }
 
     @OnMessage
-    public void OnMessage(String message) {
-        log.info("[WebSocket] 收到消息：{}", message);
-        //判断是否需要指定发送，具体规则自定义
-        if (message.indexOf("TOUSER") == 0) {
-            String name = message.substring(message.indexOf("TOUSER") + 6, message.indexOf(";"));
-            AppointSending(name, message.substring(message.indexOf(";") + 1, message.length()));
-        } else {
-            GroupSending(message);
-        }
-
+    public void onMessage(String message) {
+        log.info("【websocket消息】收到客户端消息: {}",message);
     }
 
-    /**
-     * 群发
-     *
-     * @param message
-     */
-    public void GroupSending(String message) {
-        for (String name : webSocketSet.keySet()) {
+    // 此为广播消息
+    public void sendAllMessage(String message) {
+        for(WebSocket webSocket : webSockets) {
+            log.info("【websocket消息】广播消息: {}",message);
             try {
-                webSocketSet.get(name).session.getBasicRemote().sendText(message);
+                webSocket.session.getAsyncRemote().sendText(message);
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
     }
 
-    /**
-     * 指定发送
-     *
-     * @param name
-     * @param message
-     */
-    public void AppointSending(String name, String message) {
-        try {
-            webSocketSet.get(name).session.getBasicRemote().sendText(message);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
+    // 此为单点消息
+//    public void sendOneMessage(String shopId, String message) {
+//        Session session = sessionPool.get(shopId);
+//        if (session != null) {
+//            try {
+//                session.getAsyncRemote().sendText(message);
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//            }
+//        }
+//    }
 }

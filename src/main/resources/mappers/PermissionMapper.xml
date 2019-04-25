@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.mxp.mapper.PermissionMapper">
+
+    <resultMap id="BaseResultMap" type="com.mxp.model.Permission">
+        <id column="id" property="id" jdbcType="INTEGER"/>
+        <result column="title" property="title" jdbcType="VARCHAR"/>
+        <result column="path" property="path" jdbcType="VARCHAR"/>
+        <result column="name" property="name" jdbcType="VARCHAR"/>
+        <result column="icon" property="icon" jdbcType="VARCHAR"/>
+        <result column="component" property="component" jdbcType="VARCHAR"/>
+        <result column="parent_id" property="parentId" jdbcType="INTEGER"/>
+    </resultMap>
+    <!-- 定义resultMap role_per -->
+    <resultMap id="rolePerResultMap" type="com.mxp.model.RolePermisssion">
+        <result property="roleId" column="role_id"/>
+        <result property="permissionId" column="permission_id"/>
+        <association property="permission" javaType="Permission">
+            <id column="id" property="id"/>
+            <result column="title" property="title" jdbcType="VARCHAR"/>
+            <result column="path" property="path" jdbcType="VARCHAR"/>
+            <result column="name" property="name" jdbcType="VARCHAR"/>
+            <result column="icon" property="icon" jdbcType="VARCHAR"/>
+            <result column="component" property="component" jdbcType="VARCHAR"/>
+            <result column="parent_id" property="parentId" jdbcType="INTEGER"/>
+            <result column="not_cache" property="notCache" jdbcType="VARCHAR"/>
+            <result column="hide_in_menu" property="hideInMenu" jdbcType="VARCHAR"/>
+            <result column="show_always" property="showAlways" jdbcType="VARCHAR"/>
+        </association>
+    </resultMap>
+
+
+    <!-- 查询角色对应的权限 -->
+    <select id="selectPermissionByRoleId" parameterType="java.lang.Integer" resultMap="rolePerResultMap">
+        SELECT b.* FROM role_permission a left JOIN permission b on a.permission_id = b.id WHERE a.role_id=#{roleId} GROUP BY id
+    </select>
+
+    <insert id="insertPermission" parameterType="com.mxp.model.Permission" >
+        INSERT INTO permission(title,path,name,icon,parent_id,component,hide_in_menu,not_cache,show_always) VALUES(#{title},#{path},#{name},#{icon},#{parentId},#{component},#{hideInMenu},#{notCache},#{showAlways});
+    </insert>
+
+
+</mapper>
